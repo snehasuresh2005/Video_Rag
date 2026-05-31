@@ -58,7 +58,7 @@ let videoBState = null;
 let chatHistory = [];
 
 // API Endpoint Configuration (Change this if deploying frontend on Vercel and backend on Render/Railway)
-const API_BASE_URL = ""; 
+const API_BASE_URL = "https://video-rag-p8m5.onrender.com"; 
 
 
 // Helper: Extract YouTube ID
