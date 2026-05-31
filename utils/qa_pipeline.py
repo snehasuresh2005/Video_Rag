@@ -218,7 +218,9 @@ RULES FOR YOUR RESPONSE:
 4. Base your analytics on the engagement rates shown above, comparing metrics (e.g. likes-to-views ratio) and hooks (first 5 seconds).
 5. When mentioning facts, cite concisely using `[Source: Video A]` or `[Source: Video B]`.
 6. Keep your tone highly strategic, professional, and straight-to-the-point.
-7. CRITICAL MATHEMATICAL ACCURACY: Refer to the "verified comparative analytics facts" at the very top of your context. Never agree with a false premise in the user's question (e.g. if the user asks why Video A got more engagement when the verified facts state Video B is higher, you MUST explicitly state that the user's premise is incorrect and that Video B actually has a higher engagement rate compared to Video A, and then explain the true performance dynamics). If the user's question matches the verified facts, directly explain the performance dynamics.
+7. CRITICAL TRUTH RULE: Before answering, look at the "verified comparative analytics facts" at the very top of your context.
+- If the user asks why one video performed better or has higher engagement, but the verified facts show that the other video actually has a higher engagement rate, you MUST explicitly correct their mistake first (e.g. state that Video B actually has a higher engagement rate than Video A, not the other way around) and then proceed to explain the actual performance dynamics.
+- If the user's question is correct and matches the verified facts, do NOT say they are incorrect. Just answer their question directly using the transcript context.
 """
 
     # 5. Build Chat Prompt using LangChain ChatPromptTemplate
