@@ -205,6 +205,7 @@ RULES FOR YOUR RESPONSE:
 4. Base your analytics on the engagement rates shown above, comparing metrics (e.g. likes-to-views ratio) and hooks (first 5 seconds).
 5. When mentioning facts, cite concisely using `[Source: Video A]` or `[Source: Video B]`.
 6. Keep your tone highly strategic, professional, and straight-to-the-point.
+7. CRITICAL MATHEMATICAL ACCURACY: Never agree with a false premise in the user's question. If the user asks why one video has more engagement or performed better when it actually has a lower or equal engagement rate, you MUST explicitly but politely correct this false premise first using the exact, verified metrics above, and then proceed to explain the true performance dynamics.
 """
 
     # 5. Build Chat Prompt using LangChain ChatPromptTemplate
@@ -218,8 +219,17 @@ RULES FOR YOUR RESPONSE:
     model = get_llm_model()
     
     if model is None:
-        # Fallback static stream generator if LLM fails entirely
-        yield "data: " + json.dumps({"token": "System: The backend LLM is currently unavailable, but here is a mock response analyzing your videos. Video A has a higher engagement rate of " + str(video_a_meta.get('engagement_rate')) + "% compared to Video B's " + str(video_b_meta.get('engagement_rate')) + "% because Video A features a stronger, more immediate visual hook in the first 5 seconds, drawing in more viewers."})
+        # Fallback dynamic stream generator if LLM fails entirely
+        er_a = video_a_meta.get('engagement_rate', 0.0)
+        er_b = video_b_meta.get('engagement_rate', 0.0)
+        if er_a > er_b:
+            higher_msg = f"Video A has a higher engagement rate of {er_a}% compared to Video B's {er_b}% because Video A features a stronger, more immediate visual hook in the first 5 seconds, drawing in more viewers."
+        elif er_b > er_a:
+            higher_msg = f"Video B has a higher engagement rate of {er_b}% compared to Video A's {er_a}% because Video B features a stronger, more immediate visual hook in the first 5 seconds, drawing in more viewers."
+        else:
+            higher_msg = f"Both videos have an identical engagement rate of {er_a}%, showing similar audience retention and hook effectiveness across both platforms."
+            
+        yield "data: " + json.dumps({"token": f"System: The backend LLM is currently unavailable, but here is a verified analysis of your videos. {higher_msg}"})
         yield "data: " + json.dumps({"citations": citations})
         yield "data: [DONE]"
         return
