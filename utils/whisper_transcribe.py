@@ -86,10 +86,14 @@ Hashtags: {hashtags}
 Make it sound like a natural spoken dialogue or script, matching the hooks, style, and tone of the uploader. Start directly with the transcript text without any introductory sentences. Include what they say in the first 5 seconds (the hook).
 """
     try:
-        # Import from qa_pipeline to use the existing ChatHuggingFace model
-        from utils.qa_pipeline import chat_model
+        # Import get_llm_model from qa_pipeline to use the existing model
+        from utils.qa_pipeline import get_llm_model
         from langchain_core.messages import HumanMessage
         
+        chat_model = get_llm_model()
+        if not chat_model:
+            raise ValueError("No LLM model available")
+            
         LOG.info("Generating synthetic transcript using Hugging Face model...")
         response = chat_model.invoke([HumanMessage(content=prompt)])
         synthetic_text = response.content.strip()
@@ -121,14 +125,40 @@ def get_transcript_for_video(url: str, metadata: dict) -> str:
 
     transcript = None
     
-    # 1. If YouTube, try official YouTube Transcript API
+    # 1. If YouTube, try official YouTube Transcript API with flexible language and auto-generated fallback
     if platform == "YouTube" and video_id:
         try:
-            LOG.info(f"Fetching official YouTube transcript for {video_id}")
-            fetched = YouTubeTranscriptApi().fetch(video_id, languages=["en"])
-            transcript = " ".join(entry["text"] for entry in fetched)
-        except (TranscriptsDisabled, NoTranscriptFound, VideoUnavailable, Exception) as e:
-            LOG.warning(f"Could not fetch official YouTube transcript: {e}")
+            LOG.info(f"Fetching official YouTube transcript for {video_id} using robust fallback search...")
+            api = YouTubeTranscriptApi()
+            transcript_list = api.list(video_id)
+            
+            # Try to find english, then auto-generated english, then first available
+            try:
+                transcript_obj = transcript_list.find_transcript(['en', 'en-US', 'en-GB', 'en-IN'])
+            except Exception:
+                try:
+                    transcript_obj = transcript_list.find_generated_transcript(['en', 'en-US', 'en-GB', 'en-IN'])
+                except Exception:
+                    # Get whatever transcript is available
+                    transcript_obj = next(iter(transcript_list))
+                    
+            fetched = transcript_obj.fetch()
+            
+            def get_text(entry):
+                if hasattr(entry, "text"):
+                    return entry.text
+                elif isinstance(entry, dict):
+                    return entry.get("text", "")
+                else:
+                    try:
+                        return entry["text"]
+                    except Exception:
+                        return str(entry)
+                        
+            transcript = " ".join(get_text(entry) for entry in fetched)
+            LOG.info(f"Successfully retrieved YouTube transcript for {video_id} using language: {transcript_obj.language}")
+        except Exception as e:
+            LOG.warning(f"Could not fetch official YouTube transcript for {video_id}: {e}")
 
     # 2. If no official transcript, attempt to download audio and run Whisper
     if not transcript:
