@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
@@ -15,8 +15,12 @@ from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 load_dotenv()
 LOG = logging.getLogger("qa_pipeline")
 
-# Initialize static embedding model (free, local, highly optimized)
-embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+# Initialize static embedding model (free, cloud-based serverless API)
+embedding_model = HuggingFaceEndpointEmbeddings(
+    model="sentence-transformers/all-MiniLM-L6-v2",
+    task="feature-extraction",
+    huggingfacehub_api_token=os.environ.get("HF_TOKEN")
+)
 
 def get_llm_model():
     """Dynamically load Chat model based on environment keys.
