@@ -135,6 +135,16 @@ analyzeBtn.addEventListener("click", async () => {
         return;
     }
 
+    // Clear previous chat memory and chatbox logs to prevent context contamination
+    chatHistory = [];
+    chatBox.innerHTML = `
+        <div class="message bot">
+            🚀 <strong>Videos Ingested & Indexed Successfully!</strong>
+            <p>I have built an in-memory vector database containing transcripts and full quantitative metrics for both Video A and Video B.</p>
+            <p>Ask me comparison questions or pick one of the preset prompts below to start your competitive audit.</p>
+        </div>
+    `;
+
     // Prepare loader screen
     loaderOverlay.classList.remove("hidden");
     dashboardWorkspace.classList.add("hidden");

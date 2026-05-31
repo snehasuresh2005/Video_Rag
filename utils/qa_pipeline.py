@@ -175,12 +175,14 @@ def stream_rag_chat(
     # Pre-calculate engagement rate comparison to prevent LLM numerical comparison hallucinations
     er_a = video_a_meta.get('engagement_rate', 0.0)
     er_b = video_b_meta.get('engagement_rate', 0.0)
+    creator_a = video_a_meta.get('creator', 'Video A')
+    creator_b = video_b_meta.get('creator', 'Video B')
     if er_a > er_b:
-        comparison_fact = f"Video A has a HIGHER engagement rate ({er_a}%) than Video B ({er_b}%). The difference is +{round(er_a - er_b, 2)}%."
+        comparison_fact = f"Video A (by {creator_a}) has a HIGHER engagement rate ({er_a}%) than Video B (by {creator_b}, which has {er_b}%). The difference is +{round(er_a - er_b, 2)}%."
     elif er_b > er_a:
-        comparison_fact = f"Video B has a HIGHER engagement rate ({er_b}%) than Video A ({er_a}%). The difference is +{round(er_b - er_a, 2)}%."
+        comparison_fact = f"Video B (by {creator_b}) has a HIGHER engagement rate ({er_b}%) than Video A (by {creator_a}, which has {er_a}%). The difference is +{round(er_b - er_a, 2)}%."
     else:
-        comparison_fact = f"Both Video A and Video B have the EXACT SAME engagement rate ({er_a}%)."
+        comparison_fact = f"Both Video A (by {creator_a}) and Video B (by {creator_b}) have the EXACT SAME engagement rate ({er_a}%)."
         
     # Extract actual spoken hooks from the beginning of the transcripts
     hook_a = extract_first_few_seconds_hook(video_a_transcript)
