@@ -3,33 +3,226 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Q&A with LLM</title>
+    <title>Video RAG 🎥 YouTube & Instagram Reel Q&A Comparison</title>
+    <!-- Google Fonts for state-of-the-art typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for beautiful premium vector icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Local styles -->
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <div class="chat-container">
-        <header>
-            <h1>🎥 YouTube Q&A with LLM</h1>
-            <p>Ask any question about a YouTube video — AI will answer using its transcript.</p>
+    <div class="glow-bg"></div>
+    <div class="app-container">
+        <!-- Brand Header -->
+        <header class="app-header">
+            <div class="logo">
+                <i class="fa-solid fa-wand-magic-sparkles logo-icon"></i>
+                <h1>Video<span>RAG</span></h1>
+                <span class="badge">PRO</span>
+            </div>
+            <p class="subtitle">AI-Powered Social Media Competitive Intelligence & Cross-Video RAG Chatbot</p>
         </header>
 
-        <div id="chat-box" class="chat-box">
-            <div class="message bot">
-                👋 Hi! Paste a YouTube video link and ask your first question.
+        <!-- Input Section -->
+        <section class="url-input-section card glass">
+            <h2><i class="fa-solid fa-link"></i> Analyze & Compare Video Content</h2>
+            <p class="section-desc">Paste a YouTube Video URL and an Instagram Reel URL to cross-reference analytics, hooks, and transcripts.</p>
+            <div class="inputs-grid">
+                <div class="input-wrapper">
+                    <label for="url-a"><span class="bullet red">A</span> Video A (YouTube URL)</label>
+                    <div class="input-field">
+                        <i class="fa-brands fa-youtube input-icon red-icon"></i>
+                        <input type="text" id="url-a" placeholder="e.g., https://www.youtube.com/watch?v=dQw4w9WgXcQ" value="https://www.youtube.com/watch?v=dQw4w9WgXcQ">
+                    </div>
+                </div>
+                <div class="input-wrapper">
+                    <label for="url-b"><span class="bullet purple">B</span> Video B (Instagram Reel URL)</label>
+                    <div class="input-field">
+                        <i class="fa-brands fa-instagram input-icon purple-icon"></i>
+                        <input type="text" id="url-b" placeholder="e.g., https://www.instagram.com/reel/C8X_z..." value="https://www.instagram.com/p/C9W_z5_y09x/">
+                    </div>
+                </div>
+            </div>
+            <button id="analyze-btn" class="btn primary-btn btn-glow">
+                <span class="btn-text"><i class="fa-solid fa-bolt"></i> Generate Intelligence</span>
+                <span class="loader hidden"></span>
+            </button>
+        </section>
+
+        <!-- Dynamic Loader & Ingestion Progress Overlay -->
+        <div id="loader-overlay" class="loader-overlay card glass hidden">
+            <div class="spinner-container">
+                <div class="double-bounce1"></div>
+                <div class="double-bounce2"></div>
+            </div>
+            <h3>Extracting Video Intelligence...</h3>
+            <div class="steps-progress">
+                <div class="step" id="step-meta"><i class="fa-solid fa-circle-notch fa-spin"></i> Fetching Views, Likes & Comments</div>
+                <div class="step" id="step-transcript"><i class="fa-solid fa-circle-notch fa-spin"></i> Retrieving Spoken Transcripts</div>
+                <div class="step" id="step-whisper"><i class="fa-solid fa-circle-notch fa-spin"></i> Processing Audio Fallback (Whisper)</div>
+                <div class="step" id="step-vector"><i class="fa-solid fa-circle-notch fa-spin"></i> Chunking & Indexing FAISS DB</div>
             </div>
         </div>
 
-        <div class="input-area">
-            <input type="text" id="youtube-url" placeholder="🎬 Paste YouTube URL..." />
-            <textarea id="user-question" placeholder="💬 Ask a question about the video..."></textarea>
-            <button id="send-btn">Send</button>
+        <!-- Dashboard Workspace (Visible post ingestion) -->
+        <div id="dashboard-workspace" class="dashboard-workspace hidden">
+            <!-- Left Panel: Side-by-side Video Analytics -->
+            <div class="analytics-panel">
+                <!-- Comparative Scale Widget -->
+                <div class="comparison-widget card glass">
+                    <h3><i class="fa-solid fa-chart-line"></i> Engagement Analytics Summary</h3>
+                    <div class="comparison-bar-container">
+                        <div class="comparison-bar">
+                            <div id="bar-a" class="bar bar-a" style="width: 50%;">Video A</div>
+                            <div id="bar-b" class="bar bar-b" style="width: 50%;">Video B</div>
+                        </div>
+                    </div>
+                    <p id="comparison-verdict" class="verdict-text">Video A has a 1.2% higher engagement rate than Video B.</p>
+                </div>
+
+                <div class="video-cards-grid">
+                    <!-- Video Card A -->
+                    <div class="video-card card glass border-a">
+                        <div class="card-badge badge-a">VIDEO A</div>
+                        <div class="video-embed-container" id="embed-container-a">
+                            <!-- Youtube iframe or fallback placeholder -->
+                            <div class="embed-placeholder"><i class="fa-brands fa-youtube"></i> Loading Player...</div>
+                        </div>
+                        <div class="video-details">
+                            <h3 id="title-a" class="video-title">Loading Title...</h3>
+                            <div class="creator-info">
+                                <span class="creator-name"><i class="fa-solid fa-user-circle"></i> <span id="creator-a">Creator</span></span>
+                                <span class="creator-followers"><i class="fa-solid fa-users"></i> <span id="followers-a">0</span> followers</span>
+                            </div>
+                            
+                            <!-- Metrics Grid -->
+                            <div class="metrics-grid">
+                                <div class="metric-item">
+                                    <span class="label">Views</span>
+                                    <span class="value" id="views-a">0</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="label">Likes</span>
+                                    <span class="value" id="likes-a">0</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="label">Comments</span>
+                                    <span class="value" id="comments-a">0</span>
+                                </div>
+                                <div class="metric-item highlight">
+                                    <span class="label">Engagement</span>
+                                    <span class="value" id="er-a">0%</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Dynamic Metadata -->
+                            <div class="meta-footer">
+                                <span><i class="fa-regular fa-clock"></i> <span id="duration-a">0:00</span></span>
+                                <span><i class="fa-regular fa-calendar"></i> <span id="date-a">Recent</span></span>
+                            </div>
+                            <div class="hashtags-list" id="hashtags-a">
+                                <!-- Tags dynamically generated -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Video Card B -->
+                    <div class="video-card card glass border-b">
+                        <div class="card-badge badge-b">VIDEO B</div>
+                        <div class="video-embed-container" id="embed-container-b">
+                            <!-- Instagram player placeholder -->
+                            <div class="embed-placeholder"><i class="fa-brands fa-instagram"></i> Loading Player...</div>
+                        </div>
+                        <div class="video-details">
+                            <h3 id="title-b" class="video-title">Loading Title...</h3>
+                            <div class="creator-info">
+                                <span class="creator-name"><i class="fa-solid fa-user-circle"></i> <span id="creator-b">Creator</span></span>
+                                <span class="creator-followers"><i class="fa-solid fa-users"></i> <span id="followers-b">0</span> followers</span>
+                            </div>
+                            
+                            <!-- Metrics Grid -->
+                            <div class="metrics-grid">
+                                <div class="metric-item">
+                                    <span class="label">Views</span>
+                                    <span class="value" id="views-b">0</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="label">Likes</span>
+                                    <span class="value" id="likes-b">0</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="label">Comments</span>
+                                    <span class="value" id="comments-b">0</span>
+                                </div>
+                                <div class="metric-item highlight-purple">
+                                    <span class="label">Engagement</span>
+                                    <span class="value" id="er-b">0%</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Dynamic Metadata -->
+                            <div class="meta-footer">
+                                <span><i class="fa-regular fa-clock"></i> <span id="duration-b">0:00</span></span>
+                                <span><i class="fa-regular fa-calendar"></i> <span id="date-b">Recent</span></span>
+                            </div>
+                            <div class="hashtags-list" id="hashtags-b">
+                                <!-- Tags dynamically generated -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Interactive Streaming RAG Chat Interface -->
+            <div class="chat-panel card glass">
+                <div class="chat-header">
+                    <h3><i class="fa-solid fa-messages-question"></i> Competitive RAG Intelligence Chat</h3>
+                    <button class="clear-btn" id="clear-chat-btn"><i class="fa-solid fa-trash-can"></i> Clear Memory</button>
+                </div>
+
+                <div class="chat-box" id="chat-box">
+                    <div class="message bot">
+                        🚀 <strong>Videos Ingested & Indexed Successfully!</strong>
+                        <p>I have built an in-memory vector database containing transcripts and full quantitative metrics for both Video A and Video B.</p>
+                        <p>Ask me comparison questions or pick one of the preset prompts below to start your competitive audit.</p>
+                    </div>
+                </div>
+
+                <!-- Quick Prompts Chips -->
+                <div class="quick-prompts-container">
+                    <span class="quick-prompt-label">Mandatory Queries:</span>
+                    <div class="quick-prompts-grid">
+                        <button class="prompt-chip" data-prompt="Why did Video A get more engagement than Video B?">
+                            Why did Video A get more engagement than Video B?
+                        </button>
+                        <button class="prompt-chip" data-prompt="What is the engagement rate of each?">
+                            What's the engagement rate of each?
+                        </button>
+                        <button class="prompt-chip" data-prompt="Compare the hooks in the first 5 seconds.">
+                            Compare the hooks in the first 5 seconds.
+                        </button>
+                        <button class="prompt-chip" data-prompt="Who is the creator of Video B and what is their follower count?">
+                            Who's the creator of Video B and what's their follower count?
+                        </button>
+                        <button class="prompt-chip" data-prompt="Suggest improvements for B based on what worked in A.">
+                            Suggest improvements for B based on what worked in A.
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Input area -->
+                <div class="chat-input-area">
+                    <textarea id="chat-input" placeholder="💬 Ask a competitive question about both transcripts/metrics..."></textarea>
+                    <button id="chat-send-btn" class="send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+                </div>
+            </div>
         </div>
     </div>
 
-    <footer>
-        <p>⚡ Built with FastAPI & LLM | Designed by Ali Ahmad</p>
-    </footer>
-
+    <!-- Script File -->
     <script src="/static/script.js"></script>
 </body>
 </html>

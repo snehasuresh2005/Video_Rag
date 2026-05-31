@@ -8,3 +8,6 @@ langchain-core
 faiss-cpu
 python-dotenv
 sentence-transformers
+yt-dlp
+instaloader
+openai
