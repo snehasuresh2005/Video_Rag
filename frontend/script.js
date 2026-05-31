@@ -57,8 +57,14 @@ let videoAState = null;
 let videoBState = null;
 let chatHistory = [];
 
-// API Endpoint Configuration (Change this if deploying frontend on Vercel and backend on Render/Railway)
-const API_BASE_URL = "https://video-rag-p8m5.onrender.com"; 
+// API Endpoint Configuration (Automatically resolves to local backend when testing, same-origin when served, or fallback deployed URL)
+let API_BASE_URL = "https://video-rag-p8m5.onrender.com"; 
+
+if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.protocol === "file:") {
+    API_BASE_URL = "http://localhost:8000";
+} else if (window.location.origin && !window.location.origin.includes("vercel.app") && !window.location.origin.includes("github.io")) {
+    API_BASE_URL = window.location.origin;
+}
 
 
 // Helper: Extract YouTube ID
