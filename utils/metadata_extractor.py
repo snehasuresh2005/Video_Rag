@@ -4,6 +4,9 @@ import json
 import logging
 from datetime import datetime
 from yt_dlp import YoutubeDL
+from dotenv import load_dotenv
+
+load_dotenv()
 
 LOG = logging.getLogger("metadata_extractor")
 
@@ -28,8 +31,74 @@ def format_date(date_str):
     except ValueError:
         return date_str
 
+def get_youtube_id(url: str) -> str:
+    """Extract YouTube video ID from URL."""
+    if not url:
+        return None
+    # Regular expressions for YouTube URLs
+    pattern = r'(?:https?://)?(?:www\.)?(?:youtube\.com/(?:watch\?v=|embed/|v/|shorts/)|youtu\.be/)([\w-]{11})'
+    match = re.search(pattern, url)
+    if match:
+        return match.group(1)
+    
+    # Fallback pattern
+    reg_exp = r'^.*(?:youtu\.be/|v/|u/\w/|embed/|watch\?v=|&v=)([^#&?]*).*'
+    match = re.search(reg_exp, url)
+    if match and len(match.group(1)) == 11:
+        return match.group(1)
+    return None
+
+def parse_youtube_duration(duration_str: str) -> str:
+    """Convert ISO 8601 duration (e.g., PT3M33S, PT1H2M15S) to MM:SS or HH:MM:SS."""
+    if not duration_str:
+        return "Unknown"
+    
+    pattern = r'PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?'
+    match = re.match(pattern, duration_str)
+    if not match:
+        return "Unknown"
+        
+    hours = int(match.group(1)) if match.group(1) else 0
+    minutes = int(match.group(2)) if match.group(2) else 0
+    seconds = int(match.group(3)) if match.group(3) else 0
+    
+    if hours > 0:
+        return f"{hours}:{minutes:02d}:{seconds:02d}"
+    return f"{minutes}:{seconds:02d}"
+
+def fetch_youtube_metadata_api(video_id: str, api_key: str) -> dict:
+    """Fetch video metadata using YouTube Data API v3."""
+    import urllib.request
+    url = f"https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id={video_id}&key={api_key}"
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=10) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            if not data.get("items"):
+                return None
+            return data["items"][0]
+    except Exception as e:
+        LOG.error(f"Error fetching video metadata from YouTube API: {e}")
+        return None
+
+def fetch_youtube_channel_subscribers(channel_id: str, api_key: str) -> int:
+    """Fetch channel subscriber count using YouTube Data API v3."""
+    import urllib.request
+    url = f"https://www.googleapis.com/youtube/v3/channels?part=statistics&id={channel_id}&key={api_key}"
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=10) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            if not data.get("items"):
+                return None
+            sub_count = data["items"][0]["statistics"].get("subscriberCount")
+            return int(sub_count) if sub_count else None
+    except Exception as e:
+        LOG.error(f"Error fetching channel subscribers from YouTube API: {e}")
+        return None
+
 def extract_metadata(url: str, cache_dir: str = "cache") -> dict:
-    """Extract metadata for a YouTube video or Instagram Reel using yt-dlp.
+    """Extract metadata for a YouTube video or Instagram Reel using YouTube API or yt-dlp fallback.
     
     Caches the results to avoid duplicate requests.
     """
@@ -43,14 +112,115 @@ def extract_metadata(url: str, cache_dir: str = "cache") -> dict:
         try:
             with open(cache_path, "r", encoding="utf-8") as f:
                 cached_data = json.load(f)
-                # Ignore and invalidate cache if views are 0 but likes > 0 (bad scrape)
-                if cached_data.get("views", 0) > 0:
+                # Check if this cache was a mock/fallback generated due to previous scraping blocks
+                is_fallback = (
+                    cached_data.get("id", "").startswith("gen_") or
+                    cached_data.get("id", "").startswith("fallback_")
+                )
+                
+                # Check if we have the API key available now to get real data instead of mock
+                api_key = os.environ.get("YOUTUBE_API_KEY")
+                platform = "YouTube" if "youtube.com" in url or "youtu.be" in url else "Instagram"
+                has_api_available = (platform == "YouTube" and api_key and not api_key.startswith("your_"))
+                
+                # Ignore and invalidate cache if views are 0 (bad scrape) or if it's a fallback cache and we have the API key now
+                if cached_data.get("views", 0) > 0 and not (is_fallback and has_api_available):
                     LOG.info(f"Loaded cached metadata for {url}")
                     return cached_data
                 else:
-                    LOG.info(f"Cached views is 0 for {url}; invalidating cache and refetching...")
+                    reason = "is 0" if cached_data.get("views", 0) <= 0 else "is a fallback and API is available"
+                    LOG.info(f"Cached metadata {reason} for {url}; invalidating cache and refetching...")
         except Exception:
             LOG.exception("Failed reading metadata cache, re-fetching...")
+
+    # Detect platform and YouTube API Key
+    platform = "YouTube" if "youtube.com" in url or "youtu.be" in url else "Instagram"
+    api_key = os.environ.get("YOUTUBE_API_KEY")
+    is_youtube_api_valid = api_key and not api_key.startswith("your_") and len(api_key) > 20
+    
+    if platform == "YouTube" and is_youtube_api_valid:
+        video_id = get_youtube_id(url)
+        if video_id:
+            LOG.info(f"Fetching metadata for YouTube video {video_id} using official YouTube Data API...")
+            api_data = fetch_youtube_metadata_api(video_id, api_key)
+            if api_data:
+                try:
+                    snippet = api_data.get("snippet", {})
+                    content_details = api_data.get("contentDetails", {})
+                    statistics = api_data.get("statistics", {})
+                    
+                    likes = int(statistics.get("likeCount", 0))
+                    comments = int(statistics.get("commentCount", 0))
+                    views = int(statistics.get("viewCount", 0))
+                    
+                    engagement_rate = 0.0
+                    if views > 0:
+                        engagement_rate = round(((likes + comments) / views) * 100, 2)
+                        
+                    creator = snippet.get("channelTitle", "Unknown Creator")
+                    channel_id = snippet.get("channelId")
+                    
+                    # Fetch channel subscriber/follower count
+                    follower_count = "N/A"
+                    if channel_id:
+                        sub_count = fetch_youtube_channel_subscribers(channel_id, api_key)
+                        if sub_count is not None:
+                            if sub_count >= 1_000_000:
+                                follower_count = f"{sub_count / 1_000_000:.1f}M"
+                            elif sub_count >= 1_000:
+                                follower_count = f"{sub_count / 1_000:.1f}K"
+                            else:
+                                follower_count = str(sub_count)
+                    
+                    # Upload date format YYYY-MM-DD
+                    published_at = snippet.get("publishedAt", "")
+                    upload_date = "Unknown"
+                    if published_at:
+                        try:
+                            upload_date = published_at.split("T")[0]
+                        except Exception:
+                            upload_date = published_at
+                            
+                    # Extract hashtags from tags list
+                    tags = snippet.get("tags") or []
+                    hashtags = list(set([tag.strip("#") for tag in tags if tag]))[:10]
+                    
+                    # Thumbnail priority
+                    thumbnails = snippet.get("thumbnails", {})
+                    thumbnail = ""
+                    for size in ["maxres", "standard", "high", "medium", "default"]:
+                        if size in thumbnails:
+                            thumbnail = thumbnails[size].get("url", "")
+                            break
+                            
+                    description = snippet.get("description", "")
+                    
+                    meta = {
+                        "url": url,
+                        "platform": "YouTube",
+                        "id": video_id,
+                        "title": snippet.get("title", "Untitled Video"),
+                        "creator": creator,
+                        "follower_count": follower_count,
+                        "views": views,
+                        "likes": likes,
+                        "comments": comments,
+                        "engagement_rate": engagement_rate,
+                        "duration": parse_youtube_duration(content_details.get("duration")),
+                        "upload_date": upload_date,
+                        "hashtags": hashtags,
+                        "thumbnail": thumbnail,
+                        "description": description[:300] + "..." if len(description) > 300 else description
+                    }
+                    
+                    # Cache the results
+                    with open(cache_path, "w", encoding="utf-8") as f:
+                        json.dump(meta, f, ensure_ascii=False, indent=2)
+                        
+                    LOG.info(f"Successfully retrieved and cached YouTube API metadata for {url}")
+                    return meta
+                except Exception as api_err:
+                    LOG.exception(f"Failed parsing YouTube API response, falling back to scraper: {api_err}")
 
     ydl_opts = {
         "quiet": True,
