@@ -57,6 +57,10 @@ let videoAState = null;
 let videoBState = null;
 let chatHistory = [];
 
+// API Endpoint Configuration (Change this if deploying frontend on Vercel and backend on Render/Railway)
+const API_BASE_URL = ""; 
+
+
 // Helper: Extract YouTube ID
 function getYoutubeId(url) {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -132,7 +136,7 @@ analyzeBtn.addEventListener("click", async () => {
     simulateIngestSteps();
 
     try {
-        const response = await fetch("/ingest_videos", {
+        const response = await fetch(`${API_BASE_URL}/ingest_videos`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ url_a: urlA, url_b: urlB }),
@@ -311,7 +315,7 @@ async function sendMessage() {
     chatBox.scrollTop = chatBox.scrollHeight;
 
     try {
-        const response = await fetch("/chat", {
+        const response = await fetch(`${API_BASE_URL}/chat`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
