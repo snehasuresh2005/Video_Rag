@@ -121,6 +121,15 @@ def format_chat_history(messages: List[Dict]) -> List:
             formatted.append(AIMessage(content=content))
     return formatted
 
+def extract_first_few_seconds_hook(transcript: str, num_words: int = 40) -> str:
+    """Extract the first few words of the transcript as a hook representation."""
+    if not transcript or transcript.strip() == "No transcript available.":
+        return "No spoken transcript available for the hook."
+    words = transcript.strip().replace("\n", " ").split()
+    if len(words) <= num_words:
+        return " ".join(words)
+    return " ".join(words[:num_words]) + "..."
+
 def stream_rag_chat(
     question: str, 
     chat_history: List[Dict], 
@@ -172,6 +181,10 @@ def stream_rag_chat(
         comparison_fact = f"Video B has a HIGHER engagement rate ({er_b}%) than Video A ({er_a}%). The difference is +{round(er_b - er_a, 2)}%."
     else:
         comparison_fact = f"Both Video A and Video B have the EXACT SAME engagement rate ({er_a}%)."
+        
+    # Extract actual spoken hooks from the beginning of the transcripts
+    hook_a = extract_first_few_seconds_hook(video_a_transcript)
+    hook_b = extract_first_few_seconds_hook(video_b_transcript)
     
     # 4. Construct System Prompt carrying BOTH full metrics context and semantic snippets
     system_prompt = f"""You are a world-class social media strategist and YouTube/Instagram Q&A expert.
@@ -194,6 +207,7 @@ VIDEO A (Label: Video A):
 - Duration: {video_a_meta.get('duration')}
 - Upload Date: {video_a_meta.get('upload_date')}
 - Hashtags: {", ".join(video_a_meta.get('hashtags', []))}
+- Spoken Hook (What is actually said at the very beginning of the video in the first 5-10 seconds): "{hook_a}"
 
 VIDEO B (Label: Video B):
 - Title: {video_b_meta.get('title')}
@@ -207,6 +221,7 @@ VIDEO B (Label: Video B):
 - Duration: {video_b_meta.get('duration')}
 - Upload Date: {video_b_meta.get('upload_date')}
 - Hashtags: {", ".join(video_b_meta.get('hashtags', []))}
+- Spoken Hook (What is actually said at the very beginning of the video in the first 5-10 seconds): "{hook_b}"
 
 Here are the semantically relevant spoken transcript segments retrieved from the vector store:
 {formatted_context}
