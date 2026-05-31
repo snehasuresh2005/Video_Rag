@@ -112,10 +112,5 @@ async def chat_endpoint(req: ChatRequest):
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 
-# Serve the static build of frontend
-app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
-
-@app.get("/")
-def home():
-    """Serve the index page."""
-    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+# Serve the static build of frontend at root
+app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="static")
