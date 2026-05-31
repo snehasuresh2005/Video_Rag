@@ -163,9 +163,22 @@ def stream_rag_chat(
         
     formatted_context = "\n\n".join(context_parts)
     
+    # Pre-calculate engagement rate comparison to prevent LLM numerical comparison hallucinations
+    er_a = video_a_meta.get('engagement_rate', 0.0)
+    er_b = video_b_meta.get('engagement_rate', 0.0)
+    if er_a > er_b:
+        comparison_fact = f"Video A has a HIGHER engagement rate ({er_a}%) than Video B ({er_b}%). The difference is +{round(er_a - er_b, 2)}%."
+    elif er_b > er_a:
+        comparison_fact = f"Video B has a HIGHER engagement rate ({er_b}%) than Video A ({er_a}%). The difference is +{round(er_b - er_a, 2)}%."
+    else:
+        comparison_fact = f"Both Video A and Video B have the EXACT SAME engagement rate ({er_a}%)."
+    
     # 4. Construct System Prompt carrying BOTH full metrics context and semantic snippets
     system_prompt = f"""You are a world-class social media strategist and YouTube/Instagram Q&A expert.
 You help creators optimize their performance by performing deep-dive comparative analyses of their content.
+
+Here are the verified comparative analytics facts:
+- {comparison_fact}
 
 Here is the exact, verified metadata for the two videos under review:
 
@@ -205,7 +218,7 @@ RULES FOR YOUR RESPONSE:
 4. Base your analytics on the engagement rates shown above, comparing metrics (e.g. likes-to-views ratio) and hooks (first 5 seconds).
 5. When mentioning facts, cite concisely using `[Source: Video A]` or `[Source: Video B]`.
 6. Keep your tone highly strategic, professional, and straight-to-the-point.
-7. CRITICAL MATHEMATICAL ACCURACY: Never agree with a false premise in the user's question. If the user asks why one video has more engagement or performed better when it actually has a lower or equal engagement rate, you MUST explicitly but politely correct this false premise first using the exact, verified metrics above, and then proceed to explain the true performance dynamics.
+7. CRITICAL MATHEMATICAL ACCURACY: Refer to the "verified comparative analytics facts" at the very top of your context. Never agree with a false premise in the user's question (e.g. if the user asks why Video A got more engagement when the verified facts state Video B is higher, you MUST explicitly state that the user's premise is incorrect and that Video B actually has a higher engagement rate compared to Video A, and then explain the true performance dynamics). If the user's question matches the verified facts, directly explain the performance dynamics.
 """
 
     # 5. Build Chat Prompt using LangChain ChatPromptTemplate
