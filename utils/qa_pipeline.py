@@ -184,6 +184,24 @@ def stream_rag_chat(
     else:
         comparison_fact = f"Both Video A (by {creator_a}) and Video B (by {creator_b}) have the EXACT SAME engagement rate ({er_a}%)."
         
+    # Pre-generate the correct comparison statement based on the user's question
+    lower_question = question.lower()
+    asks_a_higher = "video a" in lower_question or creator_a.lower() in lower_question or "why did a" in lower_question or "why a" in lower_question
+    asks_b_higher = "video b" in lower_question or creator_b.lower() in lower_question or "why did b" in lower_question or "why b" in lower_question
+    
+    if er_a > er_b:
+        if asks_b_higher and not asks_a_higher:
+            intro_statement = f"Actually, Video A (by {creator_a}) has a higher engagement rate of {er_a}% compared to Video B (by {creator_b}) which has {er_b}% (a difference of +{round(er_a - er_b, 2)}%), not the other way around."
+        else:
+            intro_statement = f"Video A (by {creator_a}) has a higher engagement rate of {er_a}% compared to Video B (by {creator_b}) which has {er_b}% (a difference of +{round(er_a - er_b, 2)}%)."
+    elif er_b > er_a:
+        if asks_a_higher and not asks_b_higher:
+            intro_statement = f"Actually, Video B (by {creator_b}) has a higher engagement rate of {er_b}% compared to Video A (by {creator_a}) which has {er_a}% (a difference of +{round(er_b - er_a, 2)}%), not the other way around."
+        else:
+            intro_statement = f"Video B (by {creator_b}) has a higher engagement rate of {er_b}% compared to Video A (by {creator_a}) which has {er_a}% (a difference of +{round(er_b - er_a, 2)}%)."
+    else:
+        intro_statement = f"Both Video A (by {creator_a}) and Video B (by {creator_b}) have the exact same engagement rate of {er_a}%."
+        
     # Extract actual spoken hooks from the beginning of the transcripts
     hook_a = extract_first_few_seconds_hook(video_a_transcript)
     hook_b = extract_first_few_seconds_hook(video_b_transcript)
@@ -235,9 +253,7 @@ RULES FOR YOUR RESPONSE:
 4. Base your analytics on the engagement rates shown above, comparing metrics (e.g. likes-to-views ratio) and hooks (first 5 seconds).
 5. When mentioning facts, cite concisely using `[Source: Video A]` or `[Source: Video B]`.
 6. Keep your tone highly strategic, professional, and straight-to-the-point.
-7. CRITICAL TRUTH RULE: Before answering, look at the "verified comparative analytics facts" at the very top of your context.
-- If the user asks why one video performed better or has higher engagement, but the verified facts show that the other video actually has a higher engagement rate, you MUST explicitly correct their mistake first (e.g. state that Video B actually has a higher engagement rate than Video A, not the other way around) and then proceed to explain the actual performance dynamics.
-- If the user's question is correct and matches the verified facts, do NOT say they are incorrect. Just answer their question directly using the transcript context.
+7. CRITICAL TRUTH RULE: If the user's question relates to comparing the engagement, views, likes, performance, or popularity of the videos, you MUST start your response with the following statement verbatim: "{intro_statement}". You are forbidden from modifying or contradicting this statement.
 """
 
     # 5. Build Chat Prompt using LangChain ChatPromptTemplate
